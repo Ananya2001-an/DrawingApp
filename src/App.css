@@ -6,3 +6,18 @@
 .sample-canvas{
   min-height: 70vh;
 }
+
+::-webkit-scrollbar{
+  width:10px;
+ 
+}
+
+::-webkit-scrollbar-thumb{
+  background-color: lightblue;
+}
+
+#imageUpload{
+  opacity: 0;
+  position: absolute;
+  z-index: -1;
+}

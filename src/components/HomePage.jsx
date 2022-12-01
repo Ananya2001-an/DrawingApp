@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Container, ButtonGroup, Form} from 'react-bootstrap';
+import { Button, Container, ButtonGroup, Form, Carousel, Toast, ToastContainer, Spinner} from 'react-bootstrap';
 import { useNavigate} from 'react-router-dom';
 import { AuthUse } from '../contexts/AuthContext';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { fabric } from 'fabric';
-import {Trash, Save} from "react-bootstrap-icons"
+import {Trash, Save, Camera} from "react-bootstrap-icons"
 import { SketchPicker } from 'react-color'
 import reactCSS from 'reactcss'
 import { db } from '../firebase';
@@ -12,6 +12,7 @@ import {
     collection,
     addDoc, getDocs
   } from "firebase/firestore";
+import {saveAs} from 'file-saver'
 
 export default function HomePage(){
     const {currentUser, logout, email} = AuthUse()
@@ -19,6 +20,9 @@ export default function HomePage(){
     const [error, setError] = useState('')
     const [imageUrls, setImageUrls] = useState([]);
     const [show, setShow] = useState(false)
+    const [showSaveToast, setShowSaveToast] = useState(false);
+    const [showClearToast, setShowClearToast] = useState(false);
+    const [showSpinner, setShowSpinner] = useState(true)
     const [color, setColor] = useState({
         r: '241',
         g: '112',
@@ -54,7 +58,7 @@ export default function HomePage(){
             background: `rgba(${color.r }, ${ color.g }, ${color.b }, ${color.a })`,
           },
           swatch: {
-            padding: '5px',
+            alignSelf:"center",
             background: '#fff',
             borderRadius: '1px',
             boxShadow: '0 0 0 1px rgba(0,0,0,.1)',
@@ -92,6 +96,7 @@ export default function HomePage(){
 
     const onClear = ()=>{
         editor?.deleteAll()
+        setShowClearToast(true)
     }
 
     async function handleLogOut(){
@@ -123,38 +128,66 @@ export default function HomePage(){
     }
 
     const saveImage = async ()=>{
+        setShowSpinner(false)
         let href = editor.canvas.toDataURL({
             format: "png"
         });
         const imagesRef = collection(db, `${email}`)
         await addDoc(imagesRef, {url: href}); 
+        setImageUrls(prev => [...prev, href])
+        let blob = new Blob([editor.canvas.toDataURL()], {type: "octet/stream"});
+        saveAs(blob, "canvas.png");
+        setShowSpinner(true)
+        setShowSaveToast(true)
     }
 
-    if(currentUser != '')
+    if(currentUser != undefined)
     {
         return(
-            <>
+            <div className='position-relative'>
+            <Spinner style={{position: "fixed", top: "50%", left: "50%"}}
+             animation='grow' variant='info' size='lg' hidden={showSpinner}/>
+            <ToastContainer className="p-3" position='top-end'>
+                <Toast bg='light' show={showSaveToast} onClose={()=> setShowSaveToast(false)}>
+                <Toast.Header>
+                    👩‍🎨
+                    <strong className="me-auto">Saved</strong>
+                    <small className='text-muted'>just now</small>
+                </Toast.Header>
+                <Toast.Body>Woohoo, you just saved a new design in "Make it." ! You can find your saved designs below.</Toast.Body>
+                </Toast>
+
+                <Toast bg='light' show={showClearToast} onClose={()=> setShowClearToast(false)}>
+                <Toast.Header>
+                    👩‍🎨
+                    <strong className="me-auto">Cleared</strong>
+                    <small className='text-muted'>just now</small>
+                </Toast.Header>
+                <Toast.Body>The board is all cleared now! Keep drawing.</Toast.Body>
+                </Toast>
+            </ToastContainer>
            <header>
-            <Container className='d-flex' style={{justifyContent:"space-between", alignItems:"center"}}>
-                <h1>Make it<span style={{color:"lightblue"}}>.</span></h1>
-                {email && <Button variant='light' onClick={handleLogOut}>LogOut <span style={{textDecoration:"underline",
-                fontStyle:"italic"}}>{email}</span></Button>}
+            <Container className='d-flex p-2' style={{justifyContent:"space-between", alignItems:"center"}}>
+                <h1>Make it<span style={{color:"lightblue"}}>.</span>👩‍🎨</h1>
+                {email && <Button variant='light' onClick={handleLogOut}>LogOut  <span style={{textDecoration:"underline",
+                fontStyle:"italic"}}>{email}</span>👋</Button>}
             </Container>
            </header>
             <Container className='draw-area'>
                 <div style={{borderBottom:"1px solid lightblue", display:'flex',
                 justifyContent:"space-between", alignItems:'center'}}>
-                <ButtonGroup variant='light' size="md" className='mb-4'>
-                <Button variant='light' onClick={onAddCircle}>Circle</Button>
-                <Button variant='light' onClick={onAddRectangle}>Rectangle</Button>
-                <Button variant='light' onClick={onAddLine}>Line</Button>
-                <Button variant='light' onClick={addText}>Text</Button>
-                <Button variant='light'> 
-                <Form.Control type='file' onChange={(event) => {
+                <ButtonGroup size="md" className='mb-4'>
+                <Button  style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={onAddCircle}>Circle</Button>
+                <Button  style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={onAddRectangle}>Rectangle</Button>
+                <Button  style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={onAddLine}>Line</Button>
+                <Button  style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={addText}>Text</Button>
+                <Button style={{background:"transparent", border:"1px solid lightblue", color:"black"}}> 
+                <label for="imageUpload" style={{cursor:"pointer"}}><Camera size='22px'/></label>
+                <Form.Control type='file' id="imageUpload" onChange={(event) => {
                     addImage(event.target.files[0])
                     }} className='w-100 rounded-0'></Form.Control>
                </Button>
-                <Button variant='light'>
+                <Button style={{background:"transparent", border:"1px solid lightblue", color:"black"}}>
                     <div style={ styles.swatch } onClick={ handleClick }>
                     <div style={ styles.color } />
                     </div>
@@ -166,19 +199,29 @@ export default function HomePage(){
                 </ButtonGroup>
                 
                 <ButtonGroup size="md" className='mb-4'>
-                <Button variant='danger' onClick={onClear}><Trash/></Button>
-                <Button variant='success' onClick={saveImage}><Save/></Button>
+                <Button style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={onClear}><Trash/></Button>
+                <Button style={{background:"transparent", border:"1px solid lightblue", color:"black"}} onClick={saveImage}><Save/></Button>
                 </ButtonGroup>
                 </div>
                 <FabricJSCanvas className="sample-canvas" onReady={onReady} />
             </Container>
             {
-                imageUrls.map(img=>{
-                    return <img src={img}>
-                    </img>
-                })
+                imageUrls.length != 0 &&
+                <Container>
+                <h3 className='text-center p-4'>Your Designs<span style={{color:"lightblue"}}>.</span>🎨</h3>
+                <Carousel slide={true} variant="dark">
+                {
+                    imageUrls.map(img=>{
+                        return <Carousel.Item>
+                        <img src={img}
+                        />
+                        </Carousel.Item>
+                    })
+                }
+                </Carousel>
+                </Container>
             }
-            </>
+            </div>
         )
     
     }

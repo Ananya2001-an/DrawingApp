@@ -33,6 +33,7 @@ export default function LogIn() {
         <Container className='d-flex align-items-center justify-content-center'
         style={{minHeight: "100vh"}}>
         <div className='w-100' style={{maxWidth: "400px"}}>
+        <h4 className='text-center p-4'>Make it<span style={{color:"lightblue"}}>.</span>👩‍🎨</h4>
         <Card style={{border:"1px solid lightblue"}}>
         <Card.Body>
             {/* <p>{currentUser.multiFactor.user.email}</p> */}

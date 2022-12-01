@@ -33,9 +33,9 @@ export default function ForgotPassword() {
         <Container className='d-flex align-items-center justify-content-center'
         style={{minHeight: "100vh"}}>
         <div className='w-100' style={{maxWidth: "400px"}}>
+        <h4 className='text-center p-4'>Make it<span style={{color:"lightblue"}}>.</span>👩‍🎨</h4>
         <Card style={{border:"1px solid lightblue"}}>
             <Card.Body>
-            {/* <p>{currentUser.multiFactor.user.email}</p> */}
             <h2 className='text-center mb-4'>Reset Password</h2>
             {error && <Alert variant='danger'>{error}</Alert>}
             {message && <Alert variant='success'>{message}</Alert>}
