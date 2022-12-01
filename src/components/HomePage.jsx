@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Container, ButtonGroup, Form} from 'react-bootstrap';
 import { useNavigate} from 'react-router-dom';
 import { AuthUse } from '../contexts/AuthContext';
@@ -7,13 +7,18 @@ import { fabric } from 'fabric';
 import {Trash, Save} from "react-bootstrap-icons"
 import { SketchPicker } from 'react-color'
 import reactCSS from 'reactcss'
+import { db } from '../firebase';
+import {
+    collection,
+    addDoc, getDocs
+  } from "firebase/firestore";
 
 export default function HomePage(){
     const {currentUser, logout, email} = AuthUse()
     const navigate = useNavigate()
     const [error, setError] = useState('')
+    const [imageUrls, setImageUrls] = useState([]);
     const [show, setShow] = useState(false)
-
     const [color, setColor] = useState({
         r: '241',
         g: '112',
@@ -30,6 +35,15 @@ export default function HomePage(){
     const handleChange = (color) => {
     setColor(color.rgb)
     };
+
+   useEffect(()=>{
+    const getImages = async()=>{
+        const imagesRef = collection(db, `${email}`)
+        const data = await getDocs(imagesRef);
+        setImageUrls(data.docs.map((doc) => (doc._document.data.value.mapValue.fields.url.stringValue)));
+    } 
+    getImages()
+   },[email])
     
     const styles = reactCSS({
         'default': {
@@ -97,52 +111,78 @@ export default function HomePage(){
         })
     } 
     
-    const saveImage =()=>{
-        document.getElementsByClassName('sample-canvas')[0].toBlob((blob)=>{
-            console.log(blob)
-        })
+    const addText = ()=>{
+        var text = new fabric.IText("Type here...", {
+            fontSize: 25,
+            top: 10,
+            left: 10,
+            fontFamily: 'calibri'
+          });
+          
+        editor.canvas.add(text);
     }
 
-    return(
-        <>
-       <header>
-        <Container className='d-flex' style={{justifyContent:"space-between", alignItems:"center"}}>
-            <h1>Make it<span style={{color:"lightblue"}}>.</span></h1>
-            {email && <Button variant='light' onClick={handleLogOut}>LogOut <span style={{textDecoration:"underline",
-            fontStyle:"italic"}}>{email}</span></Button>}
-        </Container>
-       </header>
-        <Container className='draw-area'>
-            <div style={{borderBottom:"1px solid lightblue", display:'flex',
-            justifyContent:"space-between", alignItems:'center'}}>
-            <ButtonGroup variant='light' size="md" className='mb-4'>
-            <Button variant='light' onClick={onAddCircle}>Circle</Button>
-            <Button variant='light' onClick={onAddRectangle}>Rectangle</Button>
-            <Button variant='light' onClick={onAddLine}>Line</Button>
-            <Button variant='light'> 
-            <Form.Control type='file' onChange={(event) => {
-                addImage(event.target.files[0])
-                }} className='w-100 rounded-0'></Form.Control>
-           </Button>
-            <Button variant='light'>
-                <div style={ styles.swatch } onClick={ handleClick }>
-                <div style={ styles.color } />
-                </div>
-                { show ? <div style={ styles.popover }>
-                <div style={ styles.cover } onClick={ handleClose }/>
-                <SketchPicker color={ color } onChange={ handleChange } />
-                </div> : null }
-            </Button>
-            </ButtonGroup>
-            
-            <ButtonGroup size="md" className='mb-4'>
-            <Button variant='danger' onClick={onClear}><Trash/></Button>
-            <Button variant='success' onClick={saveImage}><Save/></Button>
-            </ButtonGroup>
-            </div>
-            <FabricJSCanvas className="sample-canvas" onReady={onReady} />
-        </Container>
-        </>
-    )
+    const saveImage = async ()=>{
+        let href = editor.canvas.toDataURL({
+            format: "png"
+        });
+        const imagesRef = collection(db, `${email}`)
+        await addDoc(imagesRef, {url: href}); 
+    }
 
+    if(currentUser != '')
+    {
+        return(
+            <>
+           <header>
+            <Container className='d-flex' style={{justifyContent:"space-between", alignItems:"center"}}>
+                <h1>Make it<span style={{color:"lightblue"}}>.</span></h1>
+                {email && <Button variant='light' onClick={handleLogOut}>LogOut <span style={{textDecoration:"underline",
+                fontStyle:"italic"}}>{email}</span></Button>}
+            </Container>
+           </header>
+            <Container className='draw-area'>
+                <div style={{borderBottom:"1px solid lightblue", display:'flex',
+                justifyContent:"space-between", alignItems:'center'}}>
+                <ButtonGroup variant='light' size="md" className='mb-4'>
+                <Button variant='light' onClick={onAddCircle}>Circle</Button>
+                <Button variant='light' onClick={onAddRectangle}>Rectangle</Button>
+                <Button variant='light' onClick={onAddLine}>Line</Button>
+                <Button variant='light' onClick={addText}>Text</Button>
+                <Button variant='light'> 
+                <Form.Control type='file' onChange={(event) => {
+                    addImage(event.target.files[0])
+                    }} className='w-100 rounded-0'></Form.Control>
+               </Button>
+                <Button variant='light'>
+                    <div style={ styles.swatch } onClick={ handleClick }>
+                    <div style={ styles.color } />
+                    </div>
+                    { show ? <div style={ styles.popover }>
+                    <div style={ styles.cover } onClick={ handleClose }/>
+                    <SketchPicker color={ color } onChange={ handleChange } />
+                    </div> : null }
+                </Button>
+                </ButtonGroup>
+                
+                <ButtonGroup size="md" className='mb-4'>
+                <Button variant='danger' onClick={onClear}><Trash/></Button>
+                <Button variant='success' onClick={saveImage}><Save/></Button>
+                </ButtonGroup>
+                </div>
+                <FabricJSCanvas className="sample-canvas" onReady={onReady} />
+            </Container>
+            {
+                imageUrls.map(img=>{
+                    return <img src={img}>
+                    </img>
+                })
+            }
+            </>
+        )
+    
+    }
+    else{
+        navigate('/login')
+    }
 }
